@@ -1,25 +1,29 @@
 
 #!/usr/bin/env python3
-# RSPLOIT - RDB Edition
-# Outil local de démonstration et de vérification
+# RSPLOIT | RDB Edition
+# Outil local de démonstration en Python
 
 import os
 import sys
 import time
 import hashlib
 import platform
-import getpass
+import shutil
 
-# Couleurs du terminal
+# ━━━━━━━━━━━━━━━ COULEURS NÉON ━━━━━━━━━━━━━━━
+
 RESET = "\033[0m"
 BOLD = "\033[1m"
-RED = "\033[91m"
-GREEN = "\033[92m"
-YELLOW = "\033[93m"
-BLUE = "\033[94m"
-MAGENTA = "\033[95m"
+DIM = "\033[2m"
+
 CYAN = "\033[96m"
+BLUE = "\033[94m"
+PURPLE = "\033[95m"
+GREEN = "\033[92m"
+RED = "\033[91m"
+YELLOW = "\033[93m"
 WHITE = "\033[97m"
+GRAY = "\033[90m"
 
 
 def clear():
@@ -27,227 +31,167 @@ def clear():
 
 
 def pause():
-    input(f"\n{CYAN}[RDB]{RESET} Appuie sur Entrée pour continuer...")
+    input(f"\n{CYAN}  [{WHITE}RDB{CYAN}] {GRAY}Appuie sur Entrée...{RESET}")
+
+
+def line(char="━", width=48, color=CYAN):
+    print(f"{color}{char * width}{RESET}")
+
+
+def title(text):
+    print(f"\n  {PURPLE}{BOLD}» {text}{RESET}")
+    line("─", 44, GRAY)
 
 
 def banner():
-    print(f"""{CYAN}{BOLD}
-██████╗ ██████╗ ██████╗
-██╔══██╗██╔══██╗██╔══██╗
-██████╔╝██║  ██║██████╔╝
-██╔══██╗██║  ██║██╔══██╗
-██║  ██║██████╔╝██║  ██║
-╚═╝  ╚═╝╚═════╝ ╚═╝  ╚═╝
-{RESET}{MAGENTA}          RSPLOIT{RESET}
-{GREEN}             RDB{RESET}
-{WHITE}    Local Security Toolkit{RESET}
+    clear()
+    print(f"""
+{CYAN}{BOLD}
+    ██████╗ ███████╗██████╗ ██╗      ██████╗ ██╗████████╗
+    ██╔══██╗██╔════╝██╔══██╗██║     ██╔═══██╗██║╚══██╔══╝
+    ██████╔╝███████╗██████╔╝██║     ██║   ██║██║   ██║
+    ██╔══██╗╚════██║██╔═══╝ ██║     ██║   ██║██║   ██║
+    ██║  ██║███████║██║     ███████╗╚██████╔╝██║   ██║
+    ╚═╝  ╚═╝╚══════╝╚═╝     ╚══════╝ ╚═════╝ ╚═╝   ╚═╝
+{RESET}
+                  {PURPLE}{BOLD}R D B{RESET}
+           {GRAY}LOCAL SECURITY TOOLKIT{RESET}
 """)
+    line("━", 58, CYAN)
+    print(f"  {GREEN}●{RESET} {WHITE}STATUS : ONLINE{RESET}"
+          f"       {PURPLE}◆{RESET} {WHITE}VERSION : 3.0{RESET}")
+    line("━", 58, CYAN)
 
 
 def menu():
-    clear()
     banner()
-
-    print(f"{BLUE}╔══════════════════════════════════════╗")
-    print("║             MENU PRINCIPAL           ║")
-    print("╠══════════════════════════════════════╣")
-    print("║  [01] Hash Inspector                 ║")
-    print("║  [02] Vérifier une liste .txt        ║")
-    print("║  [03] Démonstration SHA-256           ║")
-    print("║  [04] Informations système           ║")
-    print("║  [00] Quitter                        ║")
-    print("╚══════════════════════════════════════╝" + RESET)
-
-
-def detect_hash(value):
-    value = value.strip()
-
-    if value.startswith("$2a$") or value.startswith("$2b$") \
-            or value.startswith("$2y$"):
-        return "bcrypt"
-
-    if value.startswith("$argon2"):
-        return "Argon2"
-
-    if value.startswith("scrypt:"):
-        return "Werkzeug scrypt"
-
-    if all(c in "0123456789abcdefABCDEF" for c in value):
-        lengths = {
-            32: "MD5 (possible)",
-            40: "SHA-1 (possible)",
-            64: "SHA-256 (possible)",
-            96: "SHA-384 (possible)",
-            128: "SHA-512 (possible)"
-        }
-
-        if len(value) in lengths:
-            return lengths[len(value)]
-
-    return "Format inconnu"
+    print(f"""
+  {CYAN}{BOLD}╭─────────────── MAIN MENU ───────────────╮{RESET}
+  {CYAN}│{RESET}  {PURPLE}[01]{RESET}  {WHITE}Hash Inspector{RESET}                 {CYAN}│{RESET}
+  {CYAN}│{RESET}  {PURPLE}[02]{RESET}  {WHITE}Liste de test .TXT{RESET}              {CYAN}│{RESET}
+  {CYAN}│{RESET}  {PURPLE}[03]{RESET}  {WHITE}Démo SHA-256{RESET}                    {CYAN}│{RESET}
+  {CYAN}│{RESET}  {PURPLE}[04]{RESET}  {WHITE}Informations système{RESET}           {CYAN}│{RESET}
+  {CYAN}│{RESET}  {RED}[00]{RESET}  {WHITE}Quitter RSPLOIT{RESET}                 {CYAN}│{RESET}
+  {CYAN}{BOLD}╰────────────────────────────────────────╯{RESET}
+""")
 
 
 def hash_inspector():
-    clear()
     banner()
+    title("HASH INSPECTOR")
 
-    print(f"{YELLOW}=== HASH INSPECTOR ==={RESET}")
-    value = input("Entre une chaîne ou un hash de test : ").strip()
+    value = input(f"  {CYAN}Entre une chaîne ou un hash : {RESET}").strip()
 
     if not value:
-        print(f"{RED}Aucune valeur saisie.{RESET}")
+        print(f"\n  {RED}Aucune valeur saisie.{RESET}")
     else:
-        print(f"\n{GREEN}Type probable : {detect_hash(value)}{RESET}")
-        print(f"Longueur      : {len(value)} caractères")
+        print(f"\n  {GREEN}Type probable : {WHITE}{detect_hash(value)}{RESET}")
+        print(f"  {GREEN}Longueur      : {WHITE}{len(value)} caractères{RESET}")
 
     pause()
 
 
-def read_password_list():
+def detect_hash(value):
+    if value.startswith(("$2a$", "$2b$", "$2y$")):
+        return "bcrypt"
+    if value.startswith("$argon2"):
+        return "Argon2"
+    if value.startswith("scrypt:"):
+        return "Werkzeug scrypt"
+
+    if value and all(c in "0123456789abcdefABCDEF" for c in value):
+        types = {
+            32: "MD5 possible",
+            40: "SHA-1 possible",
+            64: "SHA-256 possible",
+            96: "SHA-384 possible",
+            128: "SHA-512 possible"
+        }
+        return types.get(len(value), "Format hexadécimal inconnu")
+
+    return "Format inconnu"
+
+
+def read_list():
     path = input(
-        f"{CYAN}Chemin du fichier .txt "
-        "(exemple : mots_de_passe_test.txt) : {RESET}"
-    ).strip()
-
-    # Accepte aussi un chemin entouré de guillemets
-    path = path.strip("\"'")
-
-    if not path:
-        print(f"{RED}Aucun chemin fourni.{RESET}")
-        return None
+        f"\n  {CYAN}Chemin du fichier .txt : {RESET}"
+    ).strip().strip("\"'")
 
     try:
         with open(path, "r", encoding="utf-8") as file:
-            passwords = [
+            entries = [
                 line.rstrip("\r\n")
                 for line in file
                 if line.rstrip("\r\n")
             ]
 
-        print(f"{GREEN}{len(passwords)} entrées chargées.{RESET}")
-        return passwords
+        print(f"\n  {GREEN}[+] {len(entries)} entrées chargées.{RESET}")
+        return entries
 
     except FileNotFoundError:
-        print(f"{RED}Fichier introuvable : {path}{RESET}")
+        print(f"\n  {RED}[-] Fichier introuvable.{RESET}")
     except PermissionError:
-        print(f"{RED}Permission refusée pour lire ce fichier.{RESET}")
+        print(f"\n  {RED}[-] Permission refusée.{RESET}")
     except UnicodeDecodeError:
-        print(f"{RED}Le fichier doit être encodé en UTF-8.{RESET}")
+        print(f"\n  {RED}[-] Le fichier doit être encodé en UTF-8.{RESET}")
     except OSError as error:
-        print(f"{RED}Erreur de lecture : {error}{RESET}")
+        print(f"\n  {RED}[-] Erreur : {error}{RESET}")
 
     return None
 
 
-def verify_test_list():
-    clear()
+def test_list():
     banner()
+    title("LISTE DE TEST TXT")
 
-    print(f"{YELLOW}=== VÉRIFICATION D'UNE LISTE .TXT ==={RESET}")
-    print("Mode démo : vérification d'un mot de passe de test local.")
-    print("Utilise uniquement des données que tu es autorisé à tester.\n")
+    print(f"  {GRAY}Mode démo pour données locales autorisées.{RESET}")
+    entries = read_list()
 
-    passwords = read_password_list()
-
-    if passwords is None:
+    if entries is None:
         pause()
         return
 
-    if not passwords:
-        print(f"{RED}La liste ne contient aucune entrée.{RESET}")
+    if not entries:
+        print(f"  {YELLOW}La liste est vide.{RESET}")
         pause()
         return
 
-    algorithms = {
-        "1": "md5",
-        "2": "sha1",
-        "3": "sha256",
-        "4": "sha384",
-        "5": "sha512"
-    }
+    print(f"\n  {GREEN}[+] Fichier lu correctement.{RESET}")
+    print(f"  {WHITE}Nombre d'entrées : {len(entries)}{RESET}")
+    print(f"  {GRAY}Les contenus ne sont pas affichés.{RESET}")
 
-    print("\nChoisis l'algorithme pour la démonstration :")
-    print("[1] MD5")
-    print("[2] SHA-1")
-    print("[3] SHA-256")
-    print("[4] SHA-384")
-    print("[5] SHA-512")
-
-    choice = input("\nChoix : ").strip()
-
-    if choice not in algorithms:
-        print(f"{RED}Choix invalide.{RESET}")
-        pause()
-        return
-
-    algorithm = algorithms[choice]
-
-    # Le mot de passe de référence est saisi par l'utilisateur.
-    # Son hash est créé ici pour la démonstration.
-    reference = getpass.getpass(
-        "Saisis ton mot de passe de test de référence : "
-    )
-
-    reference_hash = hashlib.new(
-        algorithm, reference.encode("utf-8")
-    ).hexdigest()
-
-    print(f"\n{CYAN}Algorithme : {algorithm.upper()}{RESET}")
-    print("Comparaison avec le mot de passe de test fourni.")
-    print("Les mots de passe de la liste ne seront pas affichés.\n")
-
-    found = False
-
-    for candidate in passwords:
-        candidate_hash = hashlib.new(
-            algorithm, candidate.encode("utf-8")
-        ).hexdigest()
-
-        if candidate_hash == reference_hash:
-            found = True
-            break
-
-    if found:
-        print(f"{GREEN}[OK] Une entrée correspond au test.{RESET}")
-    else:
-        print(
-            f"{YELLOW}[INFO] Aucune entrée de la liste "
-            f"ne correspond au test.{RESET}"
-        )
-
-    print(f"\nNombre d'entrées vérifiées : {len(passwords)}")
     pause()
 
 
 def demo_sha256():
-    clear()
     banner()
-
-    print(f"{YELLOW}=== DÉMONSTRATION SHA-256 ==={RESET}")
+    title("SHA-256 DEMONSTRATION")
 
     sample = "hello"
     result = hashlib.sha256(sample.encode("utf-8")).hexdigest()
 
-    print(f"Texte de démonstration : {sample}")
-    print(f"Hash SHA-256           : {result}")
-
-    print(
-        f"\n{GREEN}La même entrée produit "
-        f"le même hash avec SHA-256.{RESET}"
-    )
+    print(f"  {GRAY}Texte de démonstration{RESET} : {WHITE}{sample}{RESET}")
+    print(f"\n  {CYAN}Hash SHA-256 :{RESET}")
+    print(f"  {GREEN}{result}{RESET}")
+    print(f"\n  {GRAY}Un même texte produit le même hash.{RESET}")
 
     pause()
 
 
 def system_info():
-    clear()
     banner()
+    title("SYSTEM INFORMATION")
 
-    print(f"{YELLOW}=== INFORMATIONS SYSTÈME ==={RESET}")
-    print(f"Système      : {platform.system()}")
-    print(f"Version      : {platform.release()}")
-    print(f"Architecture : {platform.machine()}")
-    print(f"Python       : {platform.python_version()}")
+    info = [
+        ("Système", platform.system()),
+        ("Version", platform.release()),
+        ("Architecture", platform.machine()),
+        ("Python", platform.python_version()),
+        ("Terminal", shutil.get_terminal_size().columns.__str__() + " colonnes")
+    ]
+
+    for label, value in info:
+        print(f"  {PURPLE}› {label:<16}{RESET} {WHITE}{value}{RESET}")
 
     pause()
 
@@ -255,22 +199,23 @@ def system_info():
 def main():
     while True:
         menu()
-        choice = input(f"{MAGENTA}RDB > {RESET}").strip()
+        choice = input(f"  {CYAN}{BOLD}RSPLOIT {PURPLE}» {RESET}").strip()
 
-        if choice == "1" or choice == "01":
+        if choice in ("1", "01"):
             hash_inspector()
-        elif choice == "2" or choice == "02":
-            verify_test_list()
-        elif choice == "3" or choice == "03":
+        elif choice in ("2", "02"):
+            test_list()
+        elif choice in ("3", "03"):
             demo_sha256()
-        elif choice == "4" or choice == "04":
+        elif choice in ("4", "04"):
             system_info()
-        elif choice == "0" or choice == "00":
+        elif choice in ("0", "00"):
             clear()
-            print(f"{GREEN}RDB — Fermeture de RSPLOIT. À bientôt !{RESET}")
+            print(f"\n  {PURPLE}{BOLD}RSPLOIT{RESET}")
+            print(f"  {CYAN}RDB{RESET} {GRAY}— Session terminée.{RESET}\n")
             sys.exit(0)
         else:
-            print(f"{RED}Option invalide.{RESET}")
+            print(f"\n  {RED}[!] Option invalide.{RESET}")
             time.sleep(1)
 
 
@@ -278,5 +223,5 @@ if __name__ == "__main__":
     try:
         main()
     except KeyboardInterrupt:
-        print(f"\n{YELLOW}Arrêt demandé. À bientôt !{RESET}")
+        print(f"\n\n  {YELLOW}[!] Arrêt demandé.{RESET}")
         sys.exit(0)
